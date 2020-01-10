@@ -1,0 +1,171 @@
+Reverts:
+
+From 7c7b6dd0baea17b187b0514b59a545b4677ffdf7 Mon Sep 17 00:00:00 2001
+From: Chad Dupuis <cdupuis@redhat.com>
+Date: Tue, 15 May 2018 13:20:37 -0400
+Subject: [PATCH] [netdrv] qede: Use NETIF_F_GRO_HW
+
+Message-id: <1526390476-12354-36-git-send-email-cdupuis@redhat.com>
+Patchwork-id: 215097
+O-Subject: [PATCH v2 RHEL 7.6 35/74] qede: Use NETIF_F_GRO_HW.
+Bugzilla: 1548140
+RH-Acked-by: Don Dutile <ddutile@redhat.com>
+RH-Acked-by: Jerry Snitselaar <jsnitsel@redhat.com>
+RH-Acked-by: Tony Camuso <tcamuso@redhat.com>
+RH-Acked-by: Jarod Wilson <jarod@redhat.com>
+
+From: Michael Chan <michael.chan@broadcom.com>
+
+Bugzilla : 1548140
+
+commit 18c602dee47268248c95bc0032006e2633e480b7
+
+Advertise NETIF_F_GRO_HW and set edev->gro_disable according to the
+feature flag.  Add qede_fix_features() to drop NETIF_F_GRO_HW if
+XDP is running or MTU does not support GRO_HW or GRO is not set.
+qede_change_mtu() also checks and disables GRO_HW if MTU is not
+supported.
+
+Cc: Ariel Elior <Ariel.Elior@cavium.com>
+Cc: everest-linux-l2@cavium.com
+Acked-by: Manish Chopra <manish.chopra@cavium.com>
+Signed-off-by: Michael Chan <michael.chan@broadcom.com>
+Acked-by: Manish Chopra <manish.chopra@cavium.com>
+Signed-off-by: David S. Miller <davem@davemloft.net>
+(cherry picked from commit 18c602dee47268248c95bc0032006e2633e480b7)
+Signed-off-by: Harish Patil <hpatil@redhat.com>
+Signed-off-by: Bruno E. O. Meneguele <bmeneg@redhat.com>
+
+Conflicts:
+	drivers/net/ethernet/qlogic/qede/qede_main.c
+	(Due to missing XDP code)
+---
+ drivers/net/ethernet/qlogic/qede/qede.h         |  2 ++
+ drivers/net/ethernet/qlogic/qede/qede_ethtool.c |  3 +++
+ drivers/net/ethernet/qlogic/qede/qede_filter.c  | 21 ++++++++++++++-------
+ drivers/net/ethernet/qlogic/qede/qede_main.c    | 12 +++++-------
+ 4 files changed, 24 insertions(+), 14 deletions(-)
+
+Index: src/drivers/net/ethernet/qlogic/qede/qede.h
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/qede.h	2018-08-20 06:59:36.040992447 +0200
++++ src/drivers/net/ethernet/qlogic/qede/qede.h	2018-08-20 07:01:23.445966291 +0200
+@@ -466,8 +466,6 @@
+ void qede_vlan_mark_nonconfigured(struct qede_dev *edev);
+ int qede_configure_vlan_filters(struct qede_dev *edev);
+ 
+-netdev_features_t qede_fix_features(struct net_device *dev,
+-				    netdev_features_t features);
+ int qede_set_features(struct net_device *dev, netdev_features_t features);
+ void qede_set_rx_mode(struct net_device *ndev);
+ void qede_config_rx_mode(struct net_device *ndev);
+Index: src/drivers/net/ethernet/qlogic/qede/qede_ethtool.c
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/qede_ethtool.c	2018-08-20 06:59:36.040992447 +0200
++++ src/drivers/net/ethernet/qlogic/qede/qede_ethtool.c	2018-08-20 07:01:23.446966281 +0200
+@@ -933,9 +933,6 @@
+ 	DP_VERBOSE(edev, (NETIF_MSG_IFUP | NETIF_MSG_IFDOWN),
+ 		   "Configuring MTU size of %d\n", new_mtu);
+ 
+-	if (new_mtu > PAGE_SIZE)
+-		ndev->features &= ~NETIF_F_GRO_HW;
+-
+ 	/* Set the mtu field and re-start the interface if needed */
+ 	args.u.mtu = new_mtu;
+ 	args.func = &qede_update_mtu;
+Index: src/drivers/net/ethernet/qlogic/qede/qede_filter.c
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/qede_filter.c	2018-08-20 06:59:36.040992447 +0200
++++ src/drivers/net/ethernet/qlogic/qede/qede_filter.c	2018-08-20 07:01:23.446966281 +0200
+@@ -911,26 +911,19 @@
+ 	edev->ndev->features = args->u.features;
+ }
+ 
+-netdev_features_t qede_fix_features(struct net_device *dev,
+-				    netdev_features_t features)
+-{
+-	struct qede_dev *edev = netdev_priv(dev);
+-
+-	if (edev->ndev->mtu > PAGE_SIZE ||
+-	    !(features & NETIF_F_GRO))
+-		features &= ~NETIF_F_GRO_HW;
+-
+-	return features;
+-}
+-
+ int qede_set_features(struct net_device *dev, netdev_features_t features)
+ {
+ 	struct qede_dev *edev = netdev_priv(dev);
+ 	netdev_features_t changes = features ^ dev->features;
+ 	bool need_reload = false;
+ 
+-	if (changes & NETIF_F_GRO_HW)
+-		need_reload = true;
++	/* No action needed if hardware GRO is disabled during driver load */
++	if (changes & NETIF_F_GRO) {
++		if (dev->features & NETIF_F_GRO)
++			need_reload = !edev->gro_disable;
++		else
++			need_reload = edev->gro_disable;
++	}
+ 
+ 	if (need_reload) {
+ 		struct qede_reload_args args;
+Index: src/drivers/net/ethernet/qlogic/qede/qede_main.c
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/qede_main.c	2018-08-20 06:59:36.040992447 +0200
++++ src/drivers/net/ethernet/qlogic/qede/qede_main.c	2018-08-20 07:01:23.446966281 +0200
+@@ -548,7 +548,6 @@
+ #endif
+ 	.ndo_vlan_rx_add_vid = qede_vlan_rx_add_vid,
+ 	.ndo_vlan_rx_kill_vid = qede_vlan_rx_kill_vid,
+-	.ndo_fix_features = qede_fix_features,
+ 	.ndo_set_features = qede_set_features,
+ 	.ndo_get_stats64 = qede_get_stats64,
+ #ifdef CONFIG_QED_SRIOV
+@@ -575,7 +574,6 @@
+ 	.ndo_change_mtu_rh74 = qede_change_mtu,
+ 	.ndo_vlan_rx_add_vid = qede_vlan_rx_add_vid,
+ 	.ndo_vlan_rx_kill_vid = qede_vlan_rx_kill_vid,
+-	.ndo_fix_features = qede_fix_features,
+ 	.ndo_set_features = qede_set_features,
+ 	.ndo_get_stats64 = qede_get_stats64,
+ 	.ndo_features_check = qede_features_check,
+@@ -656,7 +654,7 @@
+ 	ndev->priv_flags |= IFF_UNICAST_FLT;
+ 
+ 	/* user-changeble features */
+-	hw_features = NETIF_F_GRO | NETIF_F_GRO_HW | NETIF_F_SG |
++	hw_features = NETIF_F_GRO | NETIF_F_SG |
+ 		      NETIF_F_IP_CSUM | NETIF_F_IPV6_CSUM |
+ 		      NETIF_F_TSO | NETIF_F_TSO6;
+ 
+@@ -1195,6 +1193,11 @@
+ 	if (edev->gro_disable)
+ 		return 0;
+ 
++	if (edev->ndev->mtu > PAGE_SIZE) {
++		edev->gro_disable = 1;
++		return 0;
++	}
++
+ 	for (i = 0; i < ETH_TPA_MAX_AGGS_NUM; i++) {
+ 		struct qede_agg_info *tpa_info = &rxq->tpa_info[i];
+ 		struct sw_rx_data *replace_buf = &tpa_info->buffer;
+@@ -1224,7 +1227,6 @@
+ err:
+ 	qede_free_sge_mem(edev, rxq);
+ 	edev->gro_disable = 1;
+-	edev->ndev->features &= ~NETIF_F_GRO_HW;
+ 	return -ENOMEM;
+ }
+ 
+@@ -1434,7 +1436,7 @@
+ 			 edev->ndev->name, queue_id);
+ 	}
+ 
+-	edev->gro_disable = !(edev->ndev->features & NETIF_F_GRO_HW);
++	edev->gro_disable = !(edev->ndev->features & NETIF_F_GRO);
+ }
+ 
+ static int qede_set_real_num_queues(struct qede_dev *edev)

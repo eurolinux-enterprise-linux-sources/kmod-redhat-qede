@@ -1,0 +1,10 @@
+Index: src/drivers/net/ethernet/qlogic/qede/Makefile
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/Makefile	2018-08-20 07:02:37.407259834 +0200
++++ src/drivers/net/ethernet/qlogic/qede/Makefile	2018-08-20 07:03:51.057556346 +0200
+@@ -1,3 +1,5 @@
++KBUILD_EXTRA_SYMBOLS := /usr/share/kmod-redhat-qed/Module.symvers
++
+ obj-$(CONFIG_QEDE) := qede.o
+ 
+ qede-y := qede_main.o qede_fp.o qede_filter.o qede_ethtool.o qede_ptp.o

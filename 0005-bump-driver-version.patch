@@ -1,0 +1,18 @@
+Index: src/drivers/net/ethernet/qlogic/qede/qede.h
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/qede.h	2017-04-19 17:55:46.079025859 +0200
++++ src/drivers/net/ethernet/qlogic/qede/qede.h	2017-04-20 19:03:31.994975652 +0200
+@@ -50,10 +50,12 @@
+ #define QEDE_MINOR_VERSION		10
+ #define QEDE_REVISION_VERSION		10
+ #define QEDE_ENGINEERING_VERSION	21
++#define QEDE_RELEASE_SUFFIX		"_dup7.3"
+ #define DRV_MODULE_VERSION __stringify(QEDE_MAJOR_VERSION) "."	\
+ 		__stringify(QEDE_MINOR_VERSION) "."		\
+ 		__stringify(QEDE_REVISION_VERSION) "."		\
+-		__stringify(QEDE_ENGINEERING_VERSION)
++		__stringify(QEDE_ENGINEERING_VERSION)		\
++		QEDE_RELEASE_SUFFIX
+ 
+ #define DRV_MODULE_SYM		qede
+ 

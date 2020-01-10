@@ -1,0 +1,13 @@
+Index: src/drivers/net/ethernet/qlogic/qede/Makefile
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/Makefile	2017-05-31 20:11:47.725599875 +0200
++++ src/drivers/net/ethernet/qlogic/qede/Makefile	2017-05-31 20:12:36.016064499 +0200
+@@ -1,6 +1,8 @@
+ CONFIG_QEDE := m
+ CONFIG_QED_RDMA := y
+ 
++KBUILD_EXTRA_SYMBOLS := /usr/share/kmod-redhat-qed/Module.symvers
++
+ obj-$(CONFIG_QEDE) := qede.o
+ 
+ qede-y := qede_main.o qede_fp.o qede_filter.o qede_ethtool.o

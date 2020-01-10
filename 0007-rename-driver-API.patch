@@ -1,0 +1,54 @@
+Index: src/include/linux/qed/qed_eth_if.h
+===================================================================
+--- src.orig/include/linux/qed/qed_eth_if.h	2017-05-31 20:13:24.579526095 +0200
++++ src/include/linux/qed/qed_eth_if.h	2017-05-31 20:16:31.556453160 +0200
+@@ -281,7 +281,7 @@
+ 			   struct qed_tunn_params *params);
+ };
+ 
+-const struct qed_eth_ops *qed_get_eth_ops(void);
+-void qed_put_eth_ops(void);
++const struct qed_eth_ops *qed_ql41000_get_eth_ops(void);
++void qed_ql41000_put_eth_ops(void);
+ 
+ #endif
+Index: src/drivers/net/ethernet/qlogic/qede/qede_main.c
+===================================================================
+--- src.orig/drivers/net/ethernet/qlogic/qede/qede_main.c	2017-05-31 20:17:31.008794036 +0200
++++ src/drivers/net/ethernet/qlogic/qede/qede_main.c	2017-05-31 20:18:09.854363371 +0200
+@@ -271,7 +271,7 @@
+ 
+ 	pr_info("qede_init: %s\n", version);
+ 
+-	qed_ops = qed_get_eth_ops();
++	qed_ops = qed_ql41000_get_eth_ops();
+ 	if (!qed_ops) {
+ 		pr_notice("Failed to get qed ethtool operations\n");
+ 		return -EINVAL;
+@@ -283,7 +283,7 @@
+ 	ret = register_netdevice_notifier_rh(&qede_netdev_notifier);
+ 	if (ret) {
+ 		pr_notice("Failed to register netdevice_notifier\n");
+-		qed_put_eth_ops();
++		qed_ql41000_put_eth_ops();
+ 		return -EINVAL;
+ 	}
+ 
+@@ -291,7 +291,7 @@
+ 	if (ret) {
+ 		pr_notice("Failed to register driver\n");
+ 		unregister_netdevice_notifier_rh(&qede_netdev_notifier);
+-		qed_put_eth_ops();
++		qed_ql41000_put_eth_ops();
+ 		return -EINVAL;
+ 	}
+ 
+@@ -305,7 +305,7 @@
+ 
+ 	unregister_netdevice_notifier_rh(&qede_netdev_notifier);
+ 	pci_unregister_driver(&qede_pci_driver);
+-	qed_put_eth_ops();
++	qed_ql41000_put_eth_ops();
+ }
+ 
+ module_init(qede_init);
